@@ -1,80 +1,296 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>proxy</title>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proxy Client</title>
     <style>
-        body { margin: 0; background: #0a0a0c; color: #fff; font-family: sans-serif; overflow: hidden; }
-        #particles-js { position: fixed; width: 100%; height: 100%; z-index: 1; opacity: 0.3; }
-        #embed-frame { width: 100vw; height: 100vh; border: none; display: none; position: relative; z-index: 2; }
-        
-        #overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            z-index: 10; background: #0a0a0c;
+      body {
+        margin: 0;
+        background: #0a0a0c;
+        color: #fff;
+        font-family: sans-serif;
+        overflow: hidden;
+      }
+      #particles-js {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        opacity: 0.3;
+      }
+      #embed-frame {
+        width: 100vw;
+        height: 100vh;
+        border: none;
+        display: none;
+        position: relative;
+        z-index: 2;
+      }
+      #overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        background: #0a0a0c;
+      }
+      .orb {
+        width: 60px;
+        height: 60px;
+        background: #6366f1;
+        border-radius: 50%;
+        filter: blur(20px);
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
         }
-        .orb { width: 60px; height: 60px; background: #6366f1; border-radius: 50%; filter: blur(20px); animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.5); } }
-        #status { margin-top: 1rem; font-size: 0.8rem; color: #666; letter-spacing: 2px; }
-        
-        #error { display: none; text-align: center; color: #ff6b6b; padding: 20px; }
+        50% {
+          transform: scale(1.5);
+        }
+      }
+      #status {
+        margin-top: 1rem;
+        font-size: 0.8rem;
+        color: #666;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+      #error {
+        display: none;
+        text-align: center;
+        color: #ff6b6b;
+        padding: 20px;
+        position: relative;
+        z-index: 11;
+        white-space: pre-wrap;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="particles-js"></div>
-    
+
     <div id="overlay">
-        <div class="orb"></div>
-        <div id="status">準備中</div>
+      <div class="orb"></div>
+      <div id="status">準備中</div>
     </div>
-    
+
     <div id="error"></div>
     <iframe id="embed-frame"></iframe>
-    
-    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
-    <script src="uv/uv.bundle.js"></script>
-    <script src="uv/uv.config.js"></script>
-    <script type="module">
-        import { registerSW } from "/prxy/register-sw.mjs";
-        import * as BareMux from "/prxy/baremux/index.mjs";
 
-        particlesJS('particles-js', { particles: { number: { value: 30 }, color: { value: '#6366f1' }, line_linked: { enable: true, opacity: 0.1 } } });
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
 
-        const connection = new BareMux.BareMuxConnection("/prxy/baremux/worker.js");
+    <!-- Step 1: uv.bundle.js を同期ロード -->
+    <script src="/uv/uv.bundle.js"></script>
 
-        function search(input) {
-            try { return new URL(input).toString(); } catch (err) {}
-            try { const url = new URL(`http://${input}`); if (url.hostname.includes(".")) return url.toString(); } catch (err) {}
-            return "https://html.duckduckgo.com/html?q=" + encodeURIComponent(input);
+    <!-- Step 2: __uv$config をインラインで定義 -->
+    <script>
+      (function () {
+        if (
+          typeof Ultraviolet === "undefined" &&
+          typeof self.Ultraviolet !== "undefined"
+        ) {
+          window.Ultraviolet = self.Ultraviolet;
         }
-
-        async function getUV(input) {
-            await registerSW();
-            document.getElementById('status').textContent = `CONNECTING TO LOCAL BARE SERVER`;
-            
-            // Wispの代わりに、自身の動的デプロイサーバーの/bare/エンドポイントをTompHTTP経由で設定します
-            const currentBare = "/bare/";
-            if ((await connection.getTransport()) !== "/prxy/baremux/worker.js") {
-                await connection.setTransport("/prxy/baremux/worker.js", [{ bare: currentBare }]);
-            }
-            return __uv$config.prefix + __uv$config.encodeUrl(search(input));
+        if (typeof Ultraviolet !== "undefined") {
+          var cfg = {
+            prefix: "/uv/",
+            bare: "/bare/",
+            encodeUrl: Ultraviolet.codec.xor.encode,
+            decodeUrl: Ultraviolet.codec.xor.decode,
+            handler: "/uv/uv.handler.js",
+            client: "/uv/uv.client.js",
+            bundle: "/uv/uv.bundle.js",
+            config: "/uv/uv.config.js",
+            sw: "/uv/uv.sw.js",
+          };
+          self.__uv$config = cfg;
+          window.__uv$config = cfg;
+        } else {
+          console.error("uv.bundle.js のロード後も Ultraviolet が未定義です。");
         }
-
-        async function embedUrl() {
-            const url = window.location.hash.substring(1);
-            if (!url) return;
-            try {
-                const proxiedUrl = await getUV(url);
-                const iframe = document.getElementById('embed-frame');
-                iframe.onload = () => { document.getElementById('overlay').style.display = 'none'; iframe.style.display = 'block'; };
-                iframe.src = proxiedUrl;
-            } catch (e) { document.getElementById('error').textContent = e.message; document.getElementById('error').style.display = 'block'; }
-        }
-
-        window.addEventListener('hashchange', embedUrl);
-        const init = () => { if (typeof __uv$config !== 'undefined') embedUrl(); else setTimeout(init, 10); };
-        window.addEventListener('load', init);
+      })();
     </script>
-</body>
+
+    <script>
+      "use strict";
+
+      var crypts = {
+        encode: function (str) {
+          return encodeURIComponent(
+            str
+              .toString()
+              .split("")
+              .map(function (char, ind) {
+                return ind % 2
+                  ? String.fromCharCode(char.charCodeAt() ^ 2)
+                  : char;
+              })
+              .join("")
+          );
+        },
+        decode: function (str) {
+          if (str.charAt(str.length - 1) === "/") str = str.slice(0, -1);
+          return decodeURIComponent(
+            str
+              .split("")
+              .map(function (char, ind) {
+                return ind % 2
+                  ? String.fromCharCode(char.charCodeAt() ^ 2)
+                  : char;
+              })
+              .join("")
+          );
+        },
+      };
+
+      if (typeof particlesJS !== "undefined") {
+        particlesJS("particles-js", {
+          particles: {
+            number: { value: 30 },
+            color: { value: "#6366f1" },
+            line_linked: { enable: true, opacity: 0.1 },
+          },
+        });
+      }
+
+      function search(input) {
+        input = input.trim();
+        var searchTemplate = "https://google.com/search?q=%s";
+        try {
+          return new URL(input).toString();
+        } catch (e) {
+          try {
+            var url = new URL("http://" + input);
+            if (url.hostname.includes(".")) return url.toString();
+            throw new Error("Invalid hostname");
+          } catch (e2) {
+            return searchTemplate.replace("%s", encodeURIComponent(input));
+          }
+        }
+      }
+
+      function showError(msg) {
+        document.getElementById("error").textContent =
+          "エラー: " +
+          msg +
+          "\nファイルの配置やサーバーの状態を確認してください。";
+        document.getElementById("error").style.display = "block";
+        document.getElementById("overlay").style.display = "none";
+      }
+
+      async function initProxy() {
+        var statusEl = document.getElementById("status");
+        try {
+          // __uv$config の確認
+          if (typeof __uv$config === "undefined") {
+            if (typeof self.__uv$config !== "undefined") {
+              window.__uv$config = self.__uv$config;
+            } else {
+              showError(
+                "__uv$config が未定義です。uv.bundle.js が正しく読み込まれているか確認してください。"
+              );
+              return;
+            }
+          }
+
+          // Service Worker の登録
+          statusEl.textContent = "Registering Service Worker...";
+          var registration = await navigator.serviceWorker.register(
+            __uv$config.sw || "/uv/uv.sw.js",
+            { scope: __uv$config.prefix }
+          );
+          console.log("SW registered:", registration.scope);
+
+          // SW がアクティブになるまで待機
+          await new Promise(function (resolve) {
+            if (registration.active) {
+              resolve();
+            } else {
+              var sw = registration.installing || registration.waiting;
+              if (sw) {
+                sw.addEventListener("statechange", function (e) {
+                  if (e.target.state === "activated") resolve();
+                });
+              } else {
+                navigator.serviceWorker.addEventListener(
+                  "controllerchange",
+                  function () {
+                    resolve();
+                  }
+                );
+              }
+            }
+          });
+
+          // BareMux の接続
+          statusEl.textContent = "Connecting to Bare Server...";
+          var BareMuxModule = await import("/uv/baremux/index.mjs");
+          var BareMuxConnection = BareMuxModule.BareMuxConnection;
+
+          if (typeof BareMuxConnection !== "function") {
+            showError("BareMuxConnection が見つかりません。");
+            return;
+          }
+
+          var connection = new BareMuxConnection("/uv/baremux/worker.js");
+
+          // トランスポートを設定（絶対URLで指定）
+          var bareUrl = location.origin + "/bare/";
+          var epoxyUrl = location.origin + "/uv/epoxy.mjs";
+
+          var currentTransport = null;
+          try {
+            currentTransport = await connection.getTransport();
+          } catch (e) {
+            currentTransport = null;
+          }
+
+          if (!currentTransport) {
+            await connection.setTransport(epoxyUrl, [{ bare: bareUrl }]);
+          }
+
+          // ハッシュからURL取得
+          var hash = window.location.hash.substring(1);
+          if (!hash) {
+            statusEl.textContent = "URL指定がありません (例: #google.com)";
+            return;
+          }
+
+          var rawUrl = decodeURIComponent(hash);
+          statusEl.textContent = "Loading proxied page...";
+
+          var proxiedUrl = __uv$config.prefix + crypts.encode(search(rawUrl));
+          console.log("proxiedUrl:", proxiedUrl);
+
+          var iframe = document.getElementById("embed-frame");
+          iframe.onload = function () {
+            document.getElementById("overlay").style.display = "none";
+            iframe.style.display = "block";
+          };
+          iframe.src = proxiedUrl;
+        } catch (e) {
+          console.error(e);
+          showError(e.message);
+        }
+      }
+
+      window.addEventListener("hashchange", function () {
+        document.getElementById("overlay").style.display = "flex";
+        document.getElementById("embed-frame").style.display = "none";
+        document.getElementById("error").style.display = "none";
+        initProxy();
+      });
+
+      window.addEventListener("load", initProxy);
+    </script>
+  </body>
 </html>

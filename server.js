@@ -14,7 +14,7 @@ const PORT = 8080;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
-app.use("/uv", express.static(__dirname + '/uv'));
+app.use("/uv", express.static(path.join(process.cwd(), 'public', 'uv')));
 app.use(cors());
 
 
